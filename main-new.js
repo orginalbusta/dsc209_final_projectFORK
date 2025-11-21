@@ -680,29 +680,258 @@ function createBubbleChart() {
 }
 
 // ===================================
-// Simple World Map Visualization
+// Mapbox World Map Visualization
 // ===================================
 function createWorldMap() {
   const mapContainer = document.getElementById('world-map');
   if (!mapContainer) return;
   
-  mapContainer.innerHTML = '<p style="text-align:center; padding: 100px 20px; color: #999;">World map visualization requires Mapbox token configuration. See README for setup instructions.</p>';
+  // Check if Mapbox is available
+  if (typeof mapboxgl === 'undefined') {
+    mapContainer.innerHTML = '<p style="text-align:center; padding: 100px 20px; color: #9aa0a6;">Mapbox GL JS not loaded. Please refresh the page.</p>';
+    return;
+  }
   
-  // Map controls
-  const playBtn = document.getElementById('play-pause-btn');
+  // Set Mapbox access token
+  mapboxgl.accessToken = 'pk.eyJ1IjoicnZhc2FwcGEiLCJhIjoiY21oenVjaHZsMHFzbjJsb3F6MzhwNWJqNiJ9.nm--3SzBTxssD9-65V2e2Q';
+  
+  try {
+    // Initialize map
+    const map = new mapboxgl.Map({
+      container: 'world-map',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [0, 20],
+      zoom: 1.5,
+      projection: 'mercator'
+    });
+    
+    // Add navigation controls
+    map.addControl(new mapboxgl.NavigationControl());
+    
+    // Enhanced country data with historical timeline
+    const countryData = {
+      'United States': { 
+        coords: [-95.7129, 37.0902], 
+        color: '#4e79a7',
+        data: { 
+          1960: { gdp: 3007, life: 69.8 },
+          1980: { gdp: 12598, life: 73.7 },
+          2000: { gdp: 36450, life: 76.8 },
+          2020: { gdp: 63543, life: 77.3 }
+        }
+      },
+      'China': { 
+        coords: [104.1954, 35.8617], 
+        color: '#e15759',
+        data: {
+          1960: { gdp: 89, life: 43.7 },
+          1980: { gdp: 194, life: 66.5 },
+          2000: { gdp: 959, life: 71.4 },
+          2020: { gdp: 10408, life: 77.5 }
+        }
+      },
+      'India': { 
+        coords: [78.9629, 20.5937], 
+        color: '#76b7b2',
+        data: {
+          1960: { gdp: 82, life: 41.3 },
+          1980: { gdp: 266, life: 54.1 },
+          2000: { gdp: 443, life: 62.5 },
+          2020: { gdp: 1965, life: 69.7 }
+        }
+      },
+      'Germany': { 
+        coords: [10.4515, 51.1657], 
+        color: '#f28e2c',
+        data: {
+          1960: { gdp: 1200, life: 69.3 },
+          1980: { gdp: 11730, life: 72.6 },
+          2000: { gdp: 23740, life: 78.3 },
+          2020: { gdp: 46445, life: 80.9 }
+        }
+      },
+      'Brazil': { 
+        coords: [-47.8825, -14.2350], 
+        color: '#59a14f',
+        data: {
+          1960: { gdp: 205, life: 54.6 },
+          1980: { gdp: 1760, life: 62.5 },
+          2000: { gdp: 3750, life: 70.4 },
+          2020: { gdp: 6796, life: 75.9 }
+        }
+      },
+      'Nigeria': { 
+        coords: [8.6753, 9.0820], 
+        color: '#edc949',
+        data: {
+          1960: { gdp: 93, life: 37.3 },
+          1980: { gdp: 852, life: 45.8 },
+          2000: { gdp: 374, life: 46.3 },
+          2020: { gdp: 2097, life: 54.7 }
+        }
+      }
+    };
+    
+    // Store markers for updates
+    const markers = {};
+    
+    map.on('load', () => {
+      // Add markers for each country with enhanced styling
+      Object.entries(countryData).forEach(([country, info]) => {
+        const data2020 = info.data[2020];
+        
+        // Create marker element with pulse effect
+        const el = document.createElement('div');
+        el.className = 'country-marker';
+        el.style.backgroundColor = info.color;
+        el.style.width = '24px';
+        el.style.height = '24px';
+        el.style.borderRadius = '50%';
+        el.style.border = '3px solid rgba(255, 255, 255, 0.8)';
+        el.style.boxShadow = `0 0 10px ${info.color}`;
+        el.style.cursor = 'pointer';
+        el.style.transition = 'all 0.3s ease';
+        
+        // Hover effect
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'scale(1.3)';
+          el.style.boxShadow = `0 0 20px ${info.color}`;
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'scale(1)';
+          el.style.boxShadow = `0 0 10px ${info.color}`;
+        });
+        
+        // Create popup with better styling
+        const popup = new mapboxgl.Popup({ 
+          offset: 25,
+          closeButton: false
+        })
+        .setHTML(`
+          <div style="color: #212529; font-family: system-ui, -apple-system, sans-serif; padding: 10px;">
+            <strong style="font-size: 15px; color: ${info.color};">${country}</strong><br/>
+            <div style="margin-top: 6px; font-size: 12px; line-height: 1.6;">
+              <span>💰 GDP: <strong>$${data2020.gdp.toLocaleString()}</strong></span><br/>
+              <span>❤️ Life Exp: <strong>${data2020.life.toFixed(1)} years</strong></span>
+            </div>
+          </div>
+        `);
+        
+        // Add marker to map
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat(info.coords)
+          .setPopup(popup)
+          .addTo(map);
+        
+        markers[country] = { marker, popup, element: el, info };
+      });
+      
+      // Add legend
+      createMapLegend();
+    });
+    
+    // Create color legend
+    function createMapLegend() {
+      const legendDiv = document.createElement('div');
+      legendDiv.style.cssText = `
+        position: absolute;
+        bottom: 40px;
+        right: 10px;
+        background: rgba(10, 14, 39, 0.95);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #2d3548;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 12px;
+        color: #e8eaed;
+        z-index: 1;
+        backdrop-filter: blur(10px);
+      `;
+      
+      legendDiv.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 10px; font-size: 13px;">📍 Countries</div>
+        ${Object.entries(countryData).map(([country, info]) => `
+          <div style="display: flex; align-items: center; margin-bottom: 7px;">
+            <div style="width: 14px; height: 14px; border-radius: 50%; background: ${info.color}; margin-right: 10px; border: 2px solid rgba(255,255,255,0.3);"></div>
+            <span style="font-size: 11px;">${country}</span>
+          </div>
+        `).join('')}
+      `;
+      
+      mapContainer.appendChild(legendDiv);
+    }
+    
+    // Function to update map data for a specific year
+    function updateMapForYear(year) {
+      const availableYears = [1960, 1980, 2000, 2020];
+      const closestYear = availableYears.reduce((prev, curr) => 
+        Math.abs(curr - year) < Math.abs(prev - year) ? curr : prev
+      );
+      
+      Object.entries(markers).forEach(([country, markerObj]) => {
+        const data = markerObj.info.data[closestYear];
+        if (data) {
+          markerObj.popup.setHTML(`
+            <div style="color: #212529; font-family: system-ui, -apple-system, sans-serif; padding: 10px;">
+              <strong style="font-size: 15px; color: ${markerObj.info.color};">${country}</strong>
+              <div style="font-size: 11px; color: #666; margin-top: 2px;">Year: ${closestYear}</div>
+              <div style="margin-top: 6px; font-size: 12px; line-height: 1.6;">
+                <span>💰 GDP: <strong>$${data.gdp.toLocaleString()}</strong></span><br/>
+                <span>❤️ Life Exp: <strong>${data.life.toFixed(1)} years</strong></span>
+              </div>
+            </div>
+          `);
+        }
+      });
+    }
+    
+  } catch (error) {
+    console.error('Mapbox initialization error:', error);
+    mapContainer.innerHTML = '<p style="text-align:center; padding: 100px 20px; color: #9aa0a6;">Map initialization failed. Check console for details.</p>';
+  }
+  
+  // Map controls - Year slider and play button
   const yearSlider = document.getElementById('map-year-slider');
   const yearDisplay = document.getElementById('map-year-display');
-  
-  if (playBtn) {
-    playBtn.addEventListener('click', () => {
-      alert('Map animation requires Mapbox configuration. This is a placeholder.');
-    });
-  }
+  const playBtn = document.getElementById('play-pause-btn');
   
   if (yearSlider) {
     yearSlider.addEventListener('input', (e) => {
+      const year = parseInt(e.target.value);
       if (yearDisplay) {
-        yearDisplay.textContent = e.target.value;
+        yearDisplay.textContent = year;
+      }
+      // Update map data when slider moves
+      if (typeof updateMapForYear !== 'undefined') {
+        updateMapForYear(year);
+      }
+    });
+  }
+  
+  if (playBtn) {
+    let playInterval = null;
+    playBtn.addEventListener('click', () => {
+      if (playInterval) {
+        clearInterval(playInterval);
+        playInterval = null;
+        playBtn.textContent = '▶ Play';
+      } else {
+        playBtn.textContent = '⏸ Pause';
+        let year = parseInt(yearSlider.value);
+        playInterval = setInterval(() => {
+          year += 5;
+          if (year > 2020) {
+            year = 1960;
+          }
+          yearSlider.value = year;
+          if (yearDisplay) {
+            yearDisplay.textContent = year;
+          }
+          // Update map data during animation
+          if (typeof updateMapForYear !== 'undefined') {
+            updateMapForYear(year);
+          }
+        }, 1500);
       }
     });
   }
@@ -726,13 +955,25 @@ function createRadarChart() {
   const g = svg.append('g')
     .attr('transform', `translate(${centerX}, ${centerY})`);
   
-  // Sample data for 2020
+  // Get 2020 data for selected countries
   const data2020 = healthData[2020] || [];
-  const selectedCountries = data2020.slice(0, 5);
+  const selectedCountries = ['United States', 'China', 'India', 'Germany', 'Brazil'];
+  const countryData = selectedCountries
+    .map(name => data2020.find(d => d.country === name))
+    .filter(d => d);
   
-  // Indicators (normalized 0-1)
-  const indicators = ['GDP', 'Life Exp', 'Population'];
+  // Indicators with normalization ranges
+  const indicators = [
+    { name: 'GDP per Capita', key: 'gdpPerCapita', max: 70000 },
+    { name: 'Life Expectancy', key: 'lifeExpectancy', max: 85 },
+    { name: 'Population (M)', key: 'population', max: 1500000000, scale: 1000000 }
+  ];
   const numIndicators = indicators.length;
+  
+  // Color scale for countries
+  const colorScale = d3.scaleOrdinal()
+    .domain(selectedCountries)
+    .range(['#4e79a7', '#e15759', '#76b7b2', '#f28e2c', '#59a14f']);
   
   // Create radar grid
   const levels = 5;
@@ -741,8 +982,18 @@ function createRadarChart() {
     g.append('circle')
       .attr('r', levelRadius)
       .attr('fill', 'none')
-      .attr('stroke', '#444')
-      .attr('stroke-width', 1);
+      .attr('stroke', '#2d3548')
+      .attr('stroke-width', 1.5);
+    
+    // Add level labels
+    if (i === levels) {
+      g.append('text')
+        .attr('x', 5)
+        .attr('y', -levelRadius)
+        .style('fill', '#9aa0a6')
+        .style('font-size', '11px')
+        .text('100%');
+    }
   }
   
   // Create axes
@@ -756,27 +1007,83 @@ function createRadarChart() {
       .attr('y1', 0)
       .attr('x2', x)
       .attr('y2', y)
-      .attr('stroke', '#666')
-      .attr('stroke-width', 1);
+      .attr('stroke', '#2d3548')
+      .attr('stroke-width', 2);
     
     g.append('text')
-      .attr('x', Math.cos(angle) * (radius + 20))
-      .attr('y', Math.sin(angle) * (radius + 20))
+      .attr('x', Math.cos(angle) * (radius + 30))
+      .attr('y', Math.sin(angle) * (radius + 30))
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
       .style('fill', '#e8eaed')
-      .style('font-size', '14px')
+      .style('font-size', '13px')
       .style('font-weight', '600')
-      .text(indicator);
+      .text(indicator.name);
   });
   
-  // Placeholder message
-  g.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', '0.35em')
-    .style('fill', '#9aa0a6')
-    .style('font-size', '16px')
-    .text('Radar chart data processing...');
+  // Create radar path generator
+  const radarLine = d3.lineRadial()
+    .angle((d, i) => (i * 2 * Math.PI) / numIndicators)
+    .radius(d => d * radius)
+    .curve(d3.curveLinearClosed);
+  
+  // Draw radar areas for each country
+  countryData.forEach(country => {
+    const values = indicators.map(ind => {
+      const value = country[ind.key];
+      const scaledValue = ind.scale ? value / ind.scale : value;
+      return Math.min(scaledValue / ind.max, 1);
+    });
+    
+    // Add closing point
+    values.push(values[0]);
+    
+    // Draw filled area
+    g.append('path')
+      .datum(values)
+      .attr('d', radarLine)
+      .attr('fill', colorScale(country.country))
+      .attr('fill-opacity', 0.2)
+      .attr('stroke', colorScale(country.country))
+      .attr('stroke-width', 2.5);
+    
+    // Draw points
+    values.slice(0, -1).forEach((value, i) => {
+      const angle = (i * 2 * Math.PI) / numIndicators - Math.PI / 2;
+      const x = Math.cos(angle) * value * radius;
+      const y = Math.sin(angle) * value * radius;
+      
+      g.append('circle')
+        .attr('cx', x)
+        .attr('cy', y)
+        .attr('r', 4)
+        .attr('fill', colorScale(country.country))
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+    });
+  });
+  
+  // Add legend below the chart
+  const legend = svg.append('g')
+    .attr('transform', `translate(${size / 2 - 200}, ${size - 40})`);
+  
+  selectedCountries.forEach((country, i) => {
+    const legendItem = legend.append('g')
+      .attr('transform', `translate(${i * 90}, 0)`);
+    
+    legendItem.append('rect')
+      .attr('width', 20)
+      .attr('height', 12)
+      .attr('fill', colorScale(country))
+      .attr('rx', 2);
+    
+    legendItem.append('text')
+      .attr('x', 25)
+      .attr('y', 10)
+      .style('fill', '#e8eaed')
+      .style('font-size', '12px')
+      .text(country);
+  });
 }
 
 // ===================================

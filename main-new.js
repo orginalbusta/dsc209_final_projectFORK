@@ -1272,22 +1272,29 @@ function createTrajectoryChart() {
 function init() {
   console.log('🌍 Initializing Echoes of History...');
   
-  // Wait a bit for all scripts to load
-  setTimeout(() => {
-    initParticles();
-    animateStats();
-    initDarkMode();
-    initSmoothScroll();
-    initScrollytelling();
-    createWorldMap();
-    createStreamGraph();
-    createRacingBars();
-    createBubbleChart();
-    createRadarChart();
-    createTrajectoryChart();
-    
-    console.log('✅ All visualizations loaded!');
-  }, 100);
+  // Ensure World Bank data has been loaded before drawing any charts
+  const dataPromise = (typeof whenDataReady === 'function')
+    ? whenDataReady()
+    : Promise.resolve();
+
+  dataPromise.then(() => {
+    // Small delay just to ensure DOM and third-party scripts are settled
+    setTimeout(() => {
+      initParticles();
+      animateStats();
+      initDarkMode();
+      initSmoothScroll();
+      initScrollytelling();
+      createWorldMap();
+      createStreamGraph();
+      createRacingBars();
+      createBubbleChart();
+      createRadarChart();
+      createTrajectoryChart();
+      
+      console.log('✅ All visualizations loaded with full World Bank data!');
+    }, 50);
+  });
 }
 
 // Wait for DOM
